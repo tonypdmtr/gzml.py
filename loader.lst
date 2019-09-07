@@ -1,0 +1,591 @@
+File loader.asm   * By ASM8 v9.78 Linux [Wednesday, September 4, 2019  9:26 pm]
+
+    1                                     ; -----------------------------------------------------------------------------
+    2                                     ;           FLASH ERASE AND PROGRAM ROUTINES INTO RAM FOR MC68HC908GZ60
+    3                                     ; -----------------------------------------------------------------------------
+    4                                     ; Written by Janos Bencsik, https://github.com/butyi/, V0.00 2019.06.29.
+    5                                     ; mass_erase
+    6                                     ;   Erases the whole Flash memory. It can erase both Flash 1 and Flash 2 by
+    7                                     ;   register parameters.
+    8                                     ;   NOTE! if security failed security bytes can only be cleared if erase
+    9                                     ;   address is address of FL1BPR. This took 2 days of by life. [angry smile]
+   10                                     ; write_flash
+   11                                     ;   Writes 64 or less bytes from RAM buffer into selected Flash row.
+   12                                     ;   It can write both Flash 1 and Flash 2 by register parameters.
+   13                                     ;   It is assumed that memory was erased before by mass erase.
+   14                                     ;   When data byte is 0xFF, it is not written. By this way forbidden
+   15                                     ;   address ranges can be skipped.
+   16                                     ;
+   17                                     ; Parameters: see below
+   18                                     ; Designed for:
+   19                                     ; - Linux side host software (gzml.c)
+   20                                     ; - 5.2Mhz quarz => 2.6Mhz fbus (ideal would be 5.333Mhz for
+   21                                     ;   monitor baud rate 9600, but 5.2 is still acceptable).
+   22                                     ; - HC908GZ60, but easy to modify to be sufficient also for
+   23                                     ;   HC908GZ family. (like HC908GZ8, HC908GZ16, HC908GZ32, HC908GZ48)
+   24                                     ; - Free ASM8 Macro Assembler (www.aspisys.com/asm8man.htm)
+   25                                     ; History:
+   26                                     ; - VXX.XX XXXX.XX.XX: ...
+   27                                     ; -----------------------------------------------------------------------------
+   28                                     
+   29                                     #Uses gz60.inc
+*** BEGIN INCLUDE FILE: /home/butyi/Dropbox/hc08/gzmlpy/gz60.inc ***
+    1                                     ;*******************************************************************************
+    2                                     ;*           MC9S08GB60 FRAMEWORK INCLUDE FILE FOR ASM8 ASSEMBLER              *
+    3                                     ;*******************************************************************************
+    4                                     ; FREEWARE, Copyright (c) Janos Bencsik  <hc08@butyi.hu>
+    5                                     ;*******************************************************************************
+    6                                     
+    7                                     ;                    #Uses     macros.inc
+    8                                                         #Message  **********************
+    9                                                         #Message  * Target: HC908GZ60  *
+   10                                                         #Message  **********************
+   11                                     
+   12                                                         #HcsOff
+   13                                                         #NoMMU                        ;MMU not available
+   14                003C                 _GZ_                def       60
+   15                0100                 FLL_FACTOR          def       256                 ;dummy to silence generic warning
+   16                                     
+   17                                     ;*******************************************************************************
+   18                                     ;* Author: Janos Bencsik  <hc08@butyi.hu>
+   19                                     ;*
+   20                                     ;* Description: Register and bit name definitions for HC908GZ60
+   21                                     ;*
+   22                                     ;* Documentation: HC908GZ60 family Data Sheet for register and bit explanations
+   23                                     ;* See CPU08 Reference Manual for explanation of equate files
+   24                                     ;*
+   25                                     ;* Assembler:  ASM8 by Tony G. Papadimitriou <tonyp@acm.org>
+   26                                     ;*******************************************************************************
+   27                                     
+   28                                     
+   29                                     
+   30                                     
+   31                                     
+   32                                     ; **** Input/Output (I/O) Ports ************************************************
+   33                                     
+   34                0000                 PTA                 def       $00,1               ;I/O port A data register
+   35                0003                 DDRA                def       $03,1               ;I/O port A data direction register
+   36                000D                 PTAPUE              def       $0D,1               ;I/O port A pullup enable controls
+   37                                     
+   38                0001                 PTB                 def       $01,1               ;I/O port B data register
+   39                0005                 DDRB                def       $05,1               ;I/O port B data direction register
+   40                                     
+   41                0002                 PTC                 def       $02,1               ;I/O port C data register
+   42                0006                 DDRC                def       $06,1               ;I/O port C data direction register
+   43                000E                 PTCPUE              def       $0E,1               ;I/O port C pullup enable controls
+   44                                     
+   45                0003                 PTDD                def       $03,1               ;I/O port D data register
+   46                0007                 DDRD                def       $07,1               ;I/O port D data direction register
+   47                000F                 PTDPUE              def       $0F,1               ;I/O port D pullup enable controls
+   48                                     
+   49                0008                 PTE                 def       $08,1               ;I/O port E data register
+   50                000C                 DDRE                def       $0C,1               ;I/O port E data direction register
+   51                                     
+   52                0440                 PTF                 def       $440,1              ;I/O port F data register
+   53                0444                 DDRF                def       $444,1              ;I/O port F data direction register
+   54                                     
+   55                0441                 PTG                 def       $441,1              ;I/O port G data register
+   56                0445                 DDRG                def       $445,1              ;I/O port G data direction register
+   57                                     
+   58                                     
+   59                                     
+   60                                     
+   61                                     
+   62                                     ; **** Serial Communications Interface (ESCI) ***********************
+   63                                     
+   64                0009                 SCPSC               def       $09,1               ;SCI Prescaler
+   65                                     
+   66                0007                 PDS2.               def       7                   ;Prescaler Divisor Select Bits
+   67                0006                 PDS1.               def       6                   ; 0 = Bypass this prescaler
+   68                0005                 PDS0.               def       5                   ; 1 = 2, ... , 7 = 8
+   69                0004                 PSSB4.              def       4                   ;Clock Insertion Select Bits
+   70                0003                 PSSB3.              def       3                   ;
+   71                0002                 PSSB2.              def       2                   ;
+   72                0001                 PSSB1.              def       1                   ;
+   73                0000                 PSSB0.              def       0                   ;
+   74                                     
+   75                0080                 PDS2_               def       %10000000           ;Prescaler Divisor Select Bits
+   76                0040                 PDS1_               def       %01000000           ; 0 = Bypass this prescaler
+   77                0020                 PDS0_               def       %00100000           ; 1 = 2, ... , 7 = 8
+   78                0010                 PSSB4_              def       %00010000           ;Clock Insertion Select Bits
+   79                0008                 PSSB3_              def       %00001000           ;
+   80                0004                 PSSB2_              def       %00000100           ;
+   81                0002                 PSSB1_              def       %00000010           ;
+   82                0001                 PSSB0_              def       %00000001           ;
+   83                                     
+   84                                       ; Prescaler Divisor (PDS)
+   85                                       ;  0 = Bypass this prescaler
+   86                                       ;  1 = 2
+   87                                       ;  2 = 3
+   88                                       ;  3 = 4
+   89                                       ;  4 = 5
+   90                                       ;  5 = 6
+   91                                       ;  6 = 7
+   92                                       ;  7 = 8
+   93                                     
+   94                                       ; PSSB[4:3:2:1:0] Prescaler Divisor Fine Adjust (PDFA)
+   95                                       ;   0 0 0 0 0 0/32 = 0
+   96                                       ;   0 0 0 0 1 1/32 = 0.03125
+   97                                       ;   0 0 0 1 0 2/32 = 0.0625
+   98                                       ;   0 0 0 1 1 3/32 = 0.09375
+   99                                       ;   0 0 1 0 0 4/32 = 0.125
+  100                                       ;   0 0 1 0 1 5/32 = 0.15625
+  101                                       ;   0 0 1 1 0 6/32 = 0.1875
+  102                                       ;   0 0 1 1 1 7/32 = 0.21875
+  103                                       ;   0 1 0 0 0 8/32 = 0.25
+  104                                       ;   0 1 0 0 1 9/32 = 0.28125
+  105                                       ;   0 1 0 1 0 10/32 = 0.3125
+  106                                       ;   0 1 0 1 1 11/32 = 0.34375
+  107                                       ;   0 1 1 0 0 12/32 = 0.375
+  108                                       ;   0 1 1 0 1 13/32 = 0.40625
+  109                                       ;   0 1 1 1 0 14/32 = 0.4375
+  110                                       ;   0 1 1 1 1 15/32 = 0.46875
+  111                                       ;   1 0 0 0 0 16/32 = 0.5
+  112                                       ;   1 0 0 0 1 17/32 = 0.53125
+  113                                       ;   1 0 0 1 0 18/32 = 0.5625
+  114                                       ;   1 0 0 1 1 19/32 = 0.59375
+  115                                       ;   1 0 1 0 0 20/32 = 0.625
+  116                                       ;   1 0 1 0 1 21/32 = 0.65625
+  117                                       ;   1 0 1 1 0 22/32 = 0.6875
+  118                                       ;   1 0 1 1 1 23/32 = 0.71875
+  119                                       ;   1 1 0 0 0 24/32 = 0.75
+  120                                       ;   1 1 0 0 1 25/32 = 0.78125
+  121                                       ;   1 1 0 1 0 26/32 = 0.8125
+  122                                       ;   1 1 0 1 1 27/32 = 0.84375
+  123                                       ;   1 1 1 0 0 28/32 = 0.875
+  124                                       ;   1 1 1 0 1 29/32 = 0.90625
+  125                                       ;   1 1 1 1 0 30/32 = 0.9375
+  126                                       ;   1 1 1 1 1 31/32 = 0.96875
+  127                                     
+  128                                     
+  129                000A                 SCIACTL             def       $0A,1               ;SCI A. Control
+  130                                     
+  131                0007                 AM1.                def       7                   ;Loop mode select bit
+  132                0006                 ALOST.              def       6                   ;Enable SCI bit
+  133                0005                 AM0.                def       5                   ;Transmit invertion bit
+  134                0004                 ACLK.               def       4                   ;Mode (character length) bit (0=8, 1=9)
+  135                0003                 AFIN.               def       3                   ;Wake-up condition bit
+  136                0002                 ARUN.               def       2                   ;Idle line type bit
+  137                0001                 AROVFL.             def       1                   ;Parity enable bit
+  138                0000                 ARD8.               def       0                   ;Parity bit (0=even, 1=odd)
+  139                                     
+  140                0080                 AM1_                def       %10000000           ;Loop mode select bit
+  141                0040                 ALOST_              def       %01000000           ;Enable SCI bit
+  142                0020                 AM0_                def       %00100000           ;Transmit invertion bit
+  143                0010                 ACLK_               def       %00010000           ;Mode (character length) bit (0=8, 1=9)
+  144                0008                 AFIN_               def       %00001000           ;Wake-up condition bit
+  145                0004                 ARUN_               def       %00000100           ;Idle line type bit
+  146                0002                 AROVFL_             def       %00000010           ;Parity enable bit
+  147                0001                 ARD8_               def       %00000001           ;Parity bit (0=even, 1=odd)
+  148                                     
+  149                                     
+  150                000B                 SCIADAT             def       $0B,1               ;SCI Arbiter Data
+  151                                     
+  152                                     
+  153                0010                 SPCR                def       $10,1               ;SPI Control R.
+  154                                     
+  155                0007                 SPRIE.              def       7                   ;SPI Receiver interrupt enable
+  156                0006                 DMAS.               def       6                   ;DMA select
+  157                0005                 SPMSTR.             def       5                   ;SPI master
+  158                0004                 CPOL.               def       4                   ;Clock polarity
+  159                0003                 CPHA.               def       3                   ;Clock phase
+  160                0002                 SPWOM.              def       2                   ;SPI wired-OR mode
+  161                0001                 SPE.                def       1                   ;SPI enable
+  162                0000                 SPTIE.              def       0                   ;SPI transmit interrupt enable
+  163                                     
+  164                0080                 SPRIE_              def       %10000000           ;SPI Receiver interrupt enable
+  165                0040                 DMAS_               def       %01000000           ;DMA select
+  166                0020                 SPMSTR_             def       %00100000           ;SPI master
+  167                0010                 CPOL_               def       %00010000           ;Clock polarity
+  168                0008                 CPHA_               def       %00001000           ;Clock phase
+  169                0004                 SPWOM_              def       %00000100           ;SPI wired-OR mode
+  170                0002                 SPE_                def       %00000010           ;SPI enable
+  171                0001                 SPTIE_              def       %00000001           ;SPI transmit interrupt enable
+  172                                     
+  173                                     
+  174                                     
+  175                                     
+  176                                     ; **** Interrupt Request Module (IRQ) ******************************************
+  177                                     
+  178                                     ; **** Keyboard Interrupt Module (KBI) *****************************************
+  179                                     
+  180                                     ; **** Serial Peripheral Interface (SPI) ***************************************
+  181                                     
+  182                                     
+  183                                     ; **** Analog-to-Digital Converter Module (ATD) ********************************
+  184                                     
+  185                                     
+  186                                     ; **** Inter-Integrated Circuit Module (IIC) ***********************************
+  187                                     
+  188                                     
+  189                                     ; **** Timer/PWM Module 1 (TPM1) ***** TPM1 has 3 channels *********************
+  190                                     ; **** Timer/PWM Module 2 (TPM2) ***** TPM2 has 5 channels *********************
+  191                                     
+  192                                     
+  193                                     ;TPM1CNT             def       $31,2               ;TPM1 counter
+  194                                     ;TPM1CNTH            def       $31,1               ;TPM1 counter (high half)
+  195                                     ;TPM1CNTL            def       $32,1               ;TPM1 counter (low half)
+  196                                     
+  197                                     ; **** Internal Clock Generator Module (ICG) ***********************************
+  198                                     
+  199                                     
+  200                                     ; **** System Integration Module (SIM) *****************************************
+  201                FE01                 SRSR                def       $FE01,1               ;Reset Status Register (SRSR)
+  202                FFFF                 COPCTL              def       $FFFF,1               ;Computer Operates Properly Control
+  203                                     
+  204                                     
+  205                                     ; **** Power Management and Control Module (PMC) *******************************
+  206                                     
+  207                                     
+  208                                     ; **** Debug Module (DBG) ******************************************************
+  209                                     
+  210                                     
+  211                                     ; **** Flash Module (FLASH) ****************************************************
+  212                                     
+  213                                     
+  214                                     ; **** Flash non-volatile register images **************************************
+  215                                     
+  216                                     
+  217                                     ; **** END OF ORIGINAL DEFINITIONS *********************************************
+  218                                     
+  219                C000                 _HC908GZ60_         def       *                   ;Tells us this INCLUDE has been used
+  220                                     
+  221                0080                 FLASH_PAGE_SIZE     def       128                 ;minimum that must be erased at once
+  222                                     
+  223                                               #if FLASH_PAGE_SIZE <> 128
+  225                                               #endif
+  226                                     
+  227                0000                 FLASH_DATA_SIZE     def       0                   ;default: no runtime flash storage
+  228                                     
+  229                FFCC                 VECTORS             def       $FFCC               ;start of fixed vectors
+  230                                               #ifdef RVECTORS
+  232                                               #endif
+  233                                     
+  234                                     ;--- Vectors
+  235                                                         #temp     VECTORS
+  236                FFCC                 Vtpm2ch5            next      :temp,2             ;TPM2 channel 5 vector
+  237                FFCE                 Vtpm2ch4            next      :temp,2             ;TPM2 channel 4 vector
+  238                FFD0                 Vtpm2ch3            next      :temp,2             ;TPM2 channel 3 vector
+  239                FFD2                 Vtpm2ch2            next      :temp,2             ;TPM2 channel 2 vector
+  240                FFD4                 Vcantx              next      :temp,2             ;CAN transmit vector
+  241                FFD6                 Vcanrx              next      :temp,2             ;CAN receive vector
+  242                FFD8                 Vcanerr             next      :temp,2             ;CAN error vector
+  243                FFDA                 Vcanwu              next      :temp,2             ;CAN wake up vector
+  244                FFDC                 Vtim                next      :temp,2             ;time base vector
+  245                FFDE                 Vadc                next      :temp,2             ;analog to digital conversion vector
+  246                FFE0                 Vkeyboard           next      :temp,2             ;keyboard vector
+  247                FFE2                 Vescitx             next      :temp,2             ;SCI transmit vector
+  248                FFE4                 Vescirx             next      :temp,2             ;SCI receive vector
+  249                FFE6                 Vescierr            next      :temp,2             ;SCI error vector
+  250                FFE8                 Vspitx              next      :temp,2             ;SPI transmit vector
+  251                FFEA                 Vspirx              next      :temp,2             ;SPI receive vector
+  252                FFEC                 Vtpm2ovf            next      :temp,2             ;TPM2 overflow vector
+  253                FFEE                 Vtpm2ch1            next      :temp,2             ;TPM2 channel 1 vector
+  254                FFF0                 Vtpm2ch0            next      :temp,2             ;TPM2 channel 0 vector
+  255                FFF2                 Vtpm1ovf            next      :temp,2             ;TPM1 overflow vector
+  256                FFF4                 Vtpm1ch1            next      :temp,2             ;TPM1 channel 1 vector
+  257                FFF6                 Vtpm1ch0            next      :temp,2             ;TPM1 channel 0 vector
+  258                FFF8                 Vpll                next      :temp,2             ;PLL vector
+  259                FFFA                 Virq                next      :temp,2             ;IRQ vector
+  260                FFFC                 Vswi                next      :temp,2             ;SWI vector
+  261                FFFE                 Vreset              next      :temp,2             ;reset vector
+  262                                     
+  263                                     
+  264                8000                 ROM                 def       $8000
+  265                FDFF                 ROM_END             def       $FDFF               ;end of all flash (before NV register and fixed vectors)
+  266                                     
+  267                0040                 RAM                 def       $0040
+  268                043F                 RAM_END             def       $043F
+  269                                     
+  270                0580                 XRAM                def       $0580
+  271                097F                 XRAM_END            def       $097F
+  272                                     
+  273                8000                 FLASH_START         def       ROM
+  274                FDFF                 FLASH_END           def       ROM_END
+  275                                     
+  276                                     
+  277                FFA0                 SERIAL_NUMBER       def       $FFA0               ;start of optional S/N (FFA0-FFAD)
+  278                                     
+  279                                     #ifndef MHZ
+  280                                       #ifndef KHZ
+  281                007A1200             HZ                  def       8000000
+  282                                       #endif
+  283                                     #endif
+  284                                     ;-------------------------------------------------------------------------------
+  285                                     ;                    #Uses     common.inc
+  286                                     ;-------------------------------------------------------------------------------
+  287                                     
+  288                                                         #DATA
+  289                                     
+  290                                                         #VECTORS
+  291                FFCC                                     org       VECTORS
+  292                                     
+  293                                                         #RAM
+  294                0040                                     org       RAM
+  295                                     
+  296                                                         #XRAM
+  297                0580                                     org       XRAM
+  298                                     
+  299                                                         #ROM
+  300                8000                                     org       ROM
+  301                                     
+  302                                                         #MEMORY   ROM       ROM_END
+  303                                                         #MEMORY   RAM       RAM_END
+  304                                                         #MEMORY   XRAM      XRAM_END
+  305                                                         #MEMORY   VECTORS   VECTORS|$00FF
+  306                                     
+*** END   INCLUDE FILE: /home/butyi/Dropbox/hc08/gzmlpy/gz60.inc *** (RESUMING FILE: /home/butyi/Dropbox/hc08/gzmlpy/loader.asm)
+   30                                     
+   31                                     ; Parameters:
+   32                0080                         org     $80
+   33                                     ;Data buffer to be filled up with row data to be written before call write_flash
+   34                                     ;First byte is the first in the row always independently from address parameter,
+   35                                     ;  this means, if address is 1, data for address 1 shall be in second byte (*0x0081)
+   36                                     ;Used only by write_flash
+   37           0080+0040                 data    rmb     64
+   38                                     
+   39                                     ;Address of flash control register (address of once FL1CR or FL2CR)
+   40                                     ;Used by both mass_erase and write_flash
+   41           00C0+0002                 p_flcr  rmb     2
+   42                                     
+   43                                     ;Address of flash block protection register (address of once FL1BPR or FL2BPR)
+   44                                     ;Used by both mass_erase and write_flash
+   45           00C2+0002                 p_flbpr rmb     2
+   46                                     
+   47                                     ;Start address to be programmed or erased from
+   48                                     ;Used by both mass_erase and write_flash
+   49           00C4+0002                 address rmb     2
+   50                                     
+   51                                     ;Return value of routines. Zero menas no error.
+   52                                     ;Used by both mass_erase and write_flash
+   53           00C6+0001                 ret     rmb     1
+   54                                     
+   55                                     ;Length (number of bytes) to be programmed
+   56                                     ;Used only by write_flash
+   57           00C7+0001                 len     rmb     1
+   58                                     
+   59                                     ; Subroutines:
+   60                0100                         org     $100
+   61                0100                 mass_erase
+   62                                     
+   63                                             ;!!!!!! BEGIN OF ERASE !!!!!!!
+   64                                     
+   65                                             ;set MASS and ERASE bits
+   66    [0100] 0100:55C0            [ 4]         ldhx    p_flcr
+   67    [0102] 0102:A606            [ 2]         lda     #$06
+   68    [0104] 0104:F7              [ 2]         sta     ,x
+   69                                     
+   70                                             ;read flbpr
+   71    [0105] 0105:55C2            [ 4]         ldhx    p_flbpr
+   72    [0107] 0107:F6              [ 2]         lda     ,x
+   73                                     
+   74                                             ;write something into address
+   75    [0108] 0108:55C4            [ 4]         ldhx    address
+   76    [010A] 010A:F7              [ 2]         sta     ,x
+   77                                     
+   78                                             ;wait t_NVS (10 us)
+   79    [010B] 010B:AE02            [ 2]         ldx     #2
+   80    [010D] 010D:AD21 (0130)     [ 4]         bsr     wait
+   81                                     
+   82                                             ;set HVEN bit
+   83    [010F] 010F:55C0            [ 4]         ldhx    p_flcr
+   84    [0111] 0111:A60E            [ 2]         lda     #$0E  ;$08|$04|$02
+   85    [0113] 0113:F7              [ 2]         sta     ,x
+   86                                     
+   87                                             ;wait t_ERASE (4 ms for mass erase = 4*200*5us)
+   88    [0114] 0114:A604            [ 2]         lda     #4
+   89                0116                 e_wait
+   90    [0116] 0116:AEC8            [ 2]         ldx     #200
+   91    [0118] 0118:AD16 (0130)     [ 4]         bsr     wait
+   92    [011A] 011A:4BFA (0116)     [ 3]         dbnza   e_wait
+   93                                     
+   94                                             ;clear ERASE and MASS bit
+   95    [011C] 011C:55C0            [ 4]         ldhx    p_flcr
+   96    [011E] 011E:A608            [ 2]         lda     #$08
+   97    [0120] 0120:F7              [ 2]         sta     ,x
+   98                                     
+   99                                             ;wait t_NVH  (100us for mass erase)
+  100    [0121] 0121:AE14            [ 2]         ldx     #20
+  101    [0123] 0123:AD0B (0130)     [ 4]         bsr     wait
+  102                                     
+  103                                             ;clear HVEN bit
+  104    [0125] 0125:55C0            [ 4]         ldhx    p_flcr
+  105    [0127] 0127:4F              [ 1]         clra
+  106    [0128] 0128:F7              [ 2]         sta     ,x
+  107                                     
+  108                                             ;wait t_RCV  (1 us)
+  109    [0129] 0129:AE01            [ 2]         ldx     #1
+  110    [012B] 012B:AD03 (0130)     [ 4]         bsr     wait
+  111                                     
+  112                                             ; !!!!!! END OF ERASE !!!!!
+  113                                     
+  114                                             ;show no error occured, erase finished
+  115    [012D] 012D:3FC6            [ 3]         clr     ret
+  116                                     
+  117                                             ;Jump back from RAM into monitor
+  118    [012F] 012F:83              [ 9]         swi
+  119                                     
+  120                                     
+  121                                             ;Wait defined time (number of applied nop instructions are adjusted dinamically by changing branch offset of dbnzx)
+  122                0130                 wait
+  123    [0130] 0130:9D              [ 1]         nop                     ;1 cyc
+  124    [0131] 0131:9D              [ 1]         nop                     ;1 cyc
+  125    [0132] 0132:9D              [ 1]         nop                     ;1 cyc
+  126    [0133] 0133:9D              [ 1]         nop                     ;1 cyc
+  127    [0134] 0134:9D              [ 1]         nop                     ;1 cyc
+  128    [0135] 0135:9D              [ 1]         nop                     ;1 cyc
+  129    [0136] 0136:9D              [ 1]         nop                     ;1 cyc
+  130    [0137] 0137:9D              [ 1]         nop                     ;1 cyc
+  131    [0138] 0138:9D              [ 1]         nop                     ;1 cyc
+  132    [0139] 0139:9D              [ 1]         nop                     ;1 cyc
+  133    [013A] 013A:9D              [ 1]         nop                     ;1 cyc
+  134    [013B] 013B:9D              [ 1]         nop                     ;1 cyc
+  135    [013C] 013C:9D              [ 1]         nop                     ;1 cyc
+  136    [013D] 013D:9D              [ 1]         nop                     ;1 cyc
+  137    [013E] 013E:9D              [ 1]         nop                     ;1 cyc
+  138    [013F] 013F:9D              [ 1]         nop                     ;1 cyc
+  139    [0140] 0140:9D              [ 1]         nop                     ;1 cyc
+  140    [0141] 0141:9D              [ 1]         nop                     ;1 cyc
+  141    [0142] 0142:9D              [ 1]         nop                     ;1 cyc
+  142    [0143] 0143:9D              [ 1]         nop                     ;1 cyc
+  143    [0144] 0144:5BEA (0130)     [ 3]         dbnzx   wait            ;3 cyc
+  144                0146                 branch_offset
+  145    [0146] 0146:81              [ 4]         rts
+  146                                     
+  147                                     
+  148                0147                 write_flash
+  149                                             ;check length
+  150    [0147] 0147:B6C7            [ 3]         lda     len
+  151    [0149] 0149:2756 (01A1)     [ 3]         beq     write_error     ;jump to end in case of len is zero
+  152    [014B] 014B:A140            [ 2]         cmp     #$40
+  153    [014D] 014D:2252 (01A1)     [ 3]         bhi     write_error     ;jump to end in case of len is greather than row size ($40 = 64)
+  154                                     
+  155                                             ;check address range if it is inside a row
+  156    [014F] 014F:B6C5            [ 3]         lda     address+1       ;low byte of address
+  157    [0151] 0151:A43F            [ 2]         and     #$3F            ;use only position in row
+  158    [0153] 0153:BBC7            [ 3]         add     len
+  159    [0155] 0155:4A              [ 1]         deca                    ;-1
+  160    [0156] 0156:A4C0            [ 2]         and     #$C0
+  161    [0158] 0158:2647 (01A1)     [ 3]         bne     write_error     ;jump to end in case of row overflow
+  162                                     
+  163                                             ;Block protection turn off  (*p_flbpr=$FF)
+  164                                             ;ldhx    p_flbpr
+  165                                             ;lda     #255
+  166                                             ;sta     ,x
+  167                                     
+  168                                             ; !!!!!! BEGIN OF WRITE !!!!!
+  169                                     
+  170                                             ;Set the PGM bit in the FLASH control register (FLxCR).
+  171    [015A] 015A:55C0            [ 4]         ldhx    p_flcr
+  172    [015C] 015C:A601            [ 2]         lda     #$01
+  173    [015E] 015E:F7              [ 2]         sta     ,x
+  174                                     
+  175                                             ;Read the FLASH block protect register.
+  176    [015F] 015F:55C2            [ 4]         ldhx    p_flbpr
+  177    [0161] 0161:F6              [ 2]         lda     ,x
+  178                                     
+  179                                             ;Write to any FLASH address within the row address range desired with any data.
+  180    [0162] 0162:55C4            [ 4]         ldhx    address
+  181    [0164] 0164:F7              [ 2]         sta     ,x
+  182                                     
+  183                                             ;Wait for a time, t_NVS (10 us)
+  184    [0165] 0165:AE02            [ 2]         ldx     #2
+  185    [0167] 0167:ADC7 (0130)     [ 4]         bsr     wait
+  186                                     
+  187                                             ;Set the HVEN bit.
+  188    [0169] 0169:55C0            [ 4]         ldhx    p_flcr
+  189    [016B] 016B:A609            [ 2]         lda     #$09
+  190    [016D] 016D:F7              [ 2]         sta     ,x
+  191                                     
+  192                                             ;Wait for a time, t_PGS. (5 us)
+  193    [016E] 016E:AE01            [ 2]         ldx     #1
+  194    [0170] 0170:ADBE (0130)     [ 4]         bsr     wait
+  195                                     
+  196                0172                 datacycle
+  197                                             ;Write one data byte to a FLASH address to be programmed.
+  198    [0172] 0172:B6C5            [ 3]         lda     address+1
+  199    [0174] 0174:A43F            [ 2]         and     #$3F
+  200    [0176] 0176:97              [ 1]         tax
+  201    [0177] 0177:8C              [ 1]         clrh
+  202    [0178] 0178:E680            [ 3]         lda     data,x          ;load byte from RAM buffer (data[address&0x3F])
+  203    [017A] 017A:A1FF            [ 2]         cmp     #$FF
+  204    [017C] 017C:2707 (0185)     [ 3]         beq     nextdata        ;Since was erase before $FF can be skipped
+  205    [017E] 017E:55C4            [ 4]         ldhx    address
+  206    [0180] 0180:F7              [ 2]         sta     ,x              ;write data byte into memory pointed by address
+  207                                     
+  208                                             ;Wait for a time, t_PROG. (40 us)
+  209    [0181] 0181:AE08            [ 2]         ldx     #8
+  210    [0183] 0183:ADAB (0130)     [ 4]         bsr     wait
+  211                0185                 nextdata
+  212    [0185] 0185:3CC5            [ 4]         inc     address+1       ;increase only low byte
+  213    [0187] 0187:3AC7            [ 4]         dec     len
+  214    [0189] 0189:B6C7            [ 3]         lda     len
+  215    [018B] 018B:26E5 (0172)     [ 3]         bne     datacycle       ;while 0<len, do loop again
+  216                                     
+  217                                             ;Clear the PGM bit.
+  218    [018D] 018D:55C0            [ 4]         ldhx    p_flcr
+  219    [018F] 018F:A608            [ 2]         lda     #$08
+  220    [0191] 0191:F7              [ 2]         sta     ,x
+  221                                     
+  222                                             ;Wait for a time, t_NVH. (5us)
+  223    [0192] 0192:AE01            [ 2]         ldx     #1
+  224    [0194] 0194:AD9A (0130)     [ 4]         bsr     wait
+  225                                     
+  226                                             ;Clear the HVEN bit.
+  227    [0196] 0196:55C0            [ 4]         ldhx    p_flcr
+  228    [0198] 0198:4F              [ 1]         clra
+  229    [0199] 0199:F7              [ 2]         sta     ,x
+  230                                     
+  231                                             ;Wait for a time, t_RCV. (1us)
+  232    [019A] 019A:AE01            [ 2]         ldx     #1
+  233    [019C] 019C:AD92 (0130)     [ 4]         bsr     wait
+  234                                     
+  235                                             ; !!!!!! END OF WRITE !!!!!
+  236                                     
+  237                                             ;Block protection turn on  (*p_flbpr#$00)
+  238                                             ;ldhx    p_flbpr
+  239                                             ;clra
+  240                                             ;sta     ,x
+  241                                     
+  242                                             ;Jump back from RAM into monitor
+  243    [019E] 019E:3FC6            [ 3]         clr     ret   ;show no error
+  244    [01A0] 01A0:83              [ 9]         swi
+  245                                     
+  246                01A1                 write_error
+  247    [01A1] 01A1:6E01 C6         [ 4]         mov     #$01,ret   ;show error
+  248                                             ;Jump back from RAM into monitor
+  249    [01A4] 01A4:83              [ 9]         swi
+  250                                     
+  251                                     
+
+(Legend: [S19 address] O=Offset active, M=Macro active)
+-----------------------------------------------------------
+
+         S E G M E N T   U S A G E   R E P O R T
+
+Segment  Start   End    Size  CodObj  DatObj  TotObj  Lines
+-------  -----  -----  -----  ------  ------  ------  -----
+ROM      $0080  $01A4  $0125   $00A5   $0000   $00A5    546
+
+Summary  $0100  $01A4  $00A5   $00A5   $0000   $00A5    546
+
+-----------------------------------------------------------
+
+         O V E R A L L   M E M O R Y   U S A G E
+
+Total RAM   size:     72   $0048    0.07 KB
+Total CODE  size:    165   $00A5    0.16 KB   (103 instructions)
+Total DATA  size:      0   $0000    0.00 KB
+Total IMAGE size:    165   $00A5    0.16 KB
+
+Lowest address  :    256   $0100
+Highest address :    420   $01A4
+Address Range   :  34356   $8634   33.55 KB   (Used Range:  0.48%)
+
+Number of INCLUDE files: 1
+Number of MACROs called: 0
+Number of [#]PROCs used: 0
+
+Assembled 557 lines (No Errors, Warnings: 0), CRC: $099E
+
+                       *** End of loader.asm listing ***
