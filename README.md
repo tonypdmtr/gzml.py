@@ -50,7 +50,7 @@ Therefore I just implemented those functions, which are needed to download my bo
 ## How to execute gzml.py?
 
 On Linux call script starting with `./`, and need to be executable (`chmod +x gzml.py`). E.g. `./gzml.py -h`.
-On Windows script cann be called aby own if PATH environment contains path of python engine. E.g. `gzml.py -h`.
+On Windows script can be called simple alone if PATH environment contains path of python engine. E.g. `gzml.py -h`.
 
 `gzml.py -h`
 
@@ -99,6 +99,8 @@ but the execution order will always be the following independently of order of c
 
 Erases the entire Flash memory, downloads hmdl.s19 software and sump last two pages.
 
+![Example CLI output](https://github.com/butyi/gzml.py/raw/master/gzmlpy_example.png)
+
 ## Baudrate
 
 Fortunately pySerial supports some non-standard baud rates like 7200 and 14400 both on Linux and Windows.
@@ -126,6 +128,21 @@ If you have loopback related errors, remember to this sleep parameter and try to
 I propose, first use 10ms by parameter `-s 10`. This was enough for my ATEN USB-Serial converter.
 If still have problem, increase more. 20ms was enough for my FT231XS device.
 My experience was, that 10ms does not slow down the download procedure. 20-30ms can already be felt.
+
+## Hardware
+
+To be HW interface easy and cheap, buy TTL USB-Serial interface from China.
+I use FT232RL FTDI USB to TTL Serial Adapter Module for communication. This is supported by both Linux and Windows 10.
+The mini step up power supply board is used to generate Vtst for IRQ pin.
+With this, you just need some cable and that's it.
+
+![GZ monitor interface circuit](https://github.com/butyi/gzml/raw/master/FT232RL_FTDI_USB_to_TTL_Serial_Adapter_Module_for_monitor_download_into_CEM35_CPU_with_MC68HC908GZ60.jpg)
+
+My first CPU card circuit diagram (schematic) is visible here. 
+
+![GZ monitor interface circuit](https://github.com/butyi/gzml/raw/master/homemat_cem35_cpu_0_sch.jpg)
+
+More info is [here](http://butyi.hu/cem35).
 
 ## How to develop it Further?
 
