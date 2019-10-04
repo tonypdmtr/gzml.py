@@ -12,6 +12,7 @@ I have already written a [tool](https://github.com/butyi/gzml) for this purpose 
 but it has two disadvantages: 
 - Does not work with non-standard baud rates. Therefore it does not work with usual quarz frequencies, like 8MHz, 4MHz.
 - Does not work on Windows.
+
 To get rid these drawbacks (and to have experience in Python), I have re-written the monitor loader in Python here.
 
 ## What are supported by gzml.py?
