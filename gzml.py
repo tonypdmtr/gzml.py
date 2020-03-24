@@ -4,11 +4,15 @@
 # Docstring
 """Command Line Monitor Loader for Motorola/Freescale/NXP MC68HC908GZ60"""
 
+# Set built in COM port useable on Ubuntu:
+#   'dmesg | grep tty' will list available ports. My one is '[    1.427419] 00:01: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A'
+#   Give access by 'sudo chmod o+rw /dev/ttyS0'
+
 # Import statements
 import os, sys, getopt, struct
 import array
-import serial
-import bincopy
+import serial # I use Python 2.7.17. For this I needed 'sudo apt install python-pip' and 'sudo python -m pip install pyserial'
+import bincopy # 'pip install bincopy'
 import re
 import time
 import ntpath
@@ -367,9 +371,9 @@ def PrintHelp():
   p("  -h           Print out this HELP text\n")
   p("Examples:\n")
   p("  gzml.py -e         Erase the whole flash memory to be uC empty\n")
-  p("  gzml.py -f xy.s19  Download hmbl.s19 software into the empty uC\n")
+  p("  gzml.py -f xy.s19  Download xy.s19 software into the empty uC\n")
   p("  gzml.py -d 0xFF00  Check if vectors were written properly\n")
-  p("  gzml.py -e -f xy.s19 -q 8000000 Erase and Download hmbl.s19 software in one call (fQ=8MHz, PTB4=0)\n")
+  p("  gzml.py -e -f xy.s19 -q 8000000 Erase and Download xy.s19 software in one call (fQ=8MHz, PTB4=0)\n")
   sys.exit(0)
 
 # ---------------------------------------------------------------------------------------
@@ -379,7 +383,7 @@ def PrintHelp():
 #Parsing command line options
 argv = sys.argv[1:]
 try:
-  opts, args = getopt.getopt(argv,"p:s:q:f:d:l:e1mhs:",["port=","sleep=","quarz=","file=","dump=","length=","erase","ptb4","memory","help","security="])
+  opts, args = getopt.getopt(argv,"p:s:q:f:d:l:e1mh",["port=","sleep=","quarz=","file=","dump=","length=","erase","ptb4","memory","help"])
 except getopt.GetoptError:
   p("Wrong option.\n")
   PrintHelp()
@@ -395,9 +399,9 @@ for opt, arg in opts:
   elif opt in ("-f", "--file"):
     inputfile = arg
   elif opt in ("-d", "--dump"):
-    dumpstart = int(arg, 0)
+    dumpstart = int(arg)
   elif opt in ("-l", "--length"):
-    dumplength = int(arg, 0)
+    dumplength = int(arg)
   elif opt in ("-e", "--erase"):
     erase = True
   elif opt in ("-m", "--memory"):
