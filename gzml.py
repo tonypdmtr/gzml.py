@@ -448,7 +448,7 @@ if 0 < len(inputfile):
 
   p("Build up memory model")
   # Build memory map of MC68HC908GZ60 in rows. This is a list of dictionary (c struct array)
-  #  Property row and rowlen belong to hardware, start and length belong to used range in row.
+  #  Property row and rowlen depends on hardware, start and length depends on used range in row.
   rows =        [{"row":0x462, "start":0x462, "rowlen":30, "used":False, "data":[] }]
   for r in range(0x480,0x500,64):
     rows.append({"row":r, "start":r, "rowlen":64, "used":False, "data":[] })
