@@ -2,6 +2,48 @@
 
 Command Line Monitor Loader for Motorola/Freescale/NXP MC68HC908GZ60
 
+## Terminology
+
+### Monitor loader
+
+Monitor loader is a PC side software which can update program memory of an
+empty (virgin) microcontroller.
+Disadvantages are it needs special hardware interface and it is slow.
+My one is available
+[here](https://github.com/butyi/gzml.py/) in Python language, or
+[here](https://github.com/butyi/gzml.c/) in C language.
+I propose the Python one.
+
+### Bootloader
+
+Bootloader is software embedded in the microcontroller, which can receive data
+from a hardware interface and write it into its own program memory.
+This software needs to be programmed into the microcontroller only once by a
+monitor loader. 
+My one is available 
+[here](https://github.com/butyi/gzbl/).
+
+### Downloader
+
+Downloader is PC side software. The communication partner of Bootloader.
+It can send the pre-compiled software (or any other data) to data to
+microcontroller through the supported hardware interface.
+My one is available
+[here](https://github.com/butyi/gzdl.py/) in Python language, or
+[here](https://github.com/butyi/gzdl.c/) in C language.
+I propose the Python one.
+
+### Application
+
+Application is the real software for the main purpose. It is easier if you
+start your application software from an application template.
+Application template is a sample software which initializes and uses almost
+all modules of microcontroller for some basic purpose. You can download into
+uC and it already works and does something. You just need to modify it for your 
+purpose. 
+My one is available 
+[here](https://github.com/butyi/gzat/).
+
 ## Why?
 
 My motivation was, I still have working hardwares, but I couldn't update the sw because 
