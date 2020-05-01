@@ -50,7 +50,7 @@ My motivation was, I still have working hardwares, but I couldn't update the sw 
 loaders developed for WinXP and motherboard built in COM port do not work on Win7, Win10 and on USB-RS232 devices.
 Therefore I could not use PEMICRO prog08sz any longer, as I could 10 years before.
 Additionally meantime I have switched from Windows to Linux. 
-I have already written a [tool](https://github.com/butyi/gzml) for this purpose on Linux, 
+I have already written a [tool](https://github.com/butyi/gzml.c) for this purpose on Linux, 
 but it has two disadvantages: 
 - Does not work with non-standard baud rates. Therefore it does not work with usual quarz frequencies, like 8MHz, 4MHz.
 - Does not work on Windows.
