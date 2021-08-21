@@ -3,6 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# ASM8 extensions
+
+*.lst
+*.map
+*.sym
+*.err
+*.s19
+
 # C extensions
 *.so
 
