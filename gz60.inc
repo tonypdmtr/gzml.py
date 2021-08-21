@@ -4,13 +4,14 @@
 ; FREEWARE, Copyright (c) Janos Bencsik  <hc08@butyi.hu>
 ;*******************************************************************************
 
-;                    #Uses     macros.inc
+;                   #Uses     macros.inc
                     #Message  **********************
                     #Message  * Target: HC908GZ60  *
                     #Message  **********************
 
                     #HcsOff
                     #NoMMU                        ;MMU not available
+
 _GZ_                def       60
 FLL_FACTOR          def       256                 ;dummy to silence generic warning
 
@@ -24,10 +25,6 @@ FLL_FACTOR          def       256                 ;dummy to silence generic warn
 ;*
 ;* Assembler:  ASM8 by Tony G. Papadimitriou <tonyp@acm.org>
 ;*******************************************************************************
-
-
-
-
 
 ; **** Input/Output (I/O) Ports ************************************************
 
@@ -55,17 +52,13 @@ DDRF                def       $444,1              ;I/O port F data direction reg
 PTG                 def       $441,1              ;I/O port G data register
 DDRG                def       $445,1              ;I/O port G data direction register
 
-
-
-
-
 ; **** Serial Communications Interface (ESCI) ***********************
 
 SCPSC               def       $09,1               ;SCI Prescaler
 
 PDS2.               def       7                   ;Prescaler Divisor Select Bits
 PDS1.               def       6                   ; 0 = Bypass this prescaler
-PDS0.               def       5                   ; 1 = 2, ... , 7 = 8       
+PDS0.               def       5                   ; 1 = 2, ... , 7 = 8
 PSSB4.              def       4                   ;Clock Insertion Select Bits
 PSSB3.              def       3                   ;
 PSSB2.              def       2                   ;
@@ -74,7 +67,7 @@ PSSB0.              def       0                   ;
 
 PDS2_               def       %10000000           ;Prescaler Divisor Select Bits
 PDS1_               def       %01000000           ; 0 = Bypass this prescaler
-PDS0_               def       %00100000           ; 1 = 2, ... , 7 = 8       
+PDS0_               def       %00100000           ; 1 = 2, ... , 7 = 8
 PSSB4_              def       %00010000           ;Clock Insertion Select Bits
 PSSB3_              def       %00001000           ;
 PSSB2_              def       %00000100           ;
@@ -124,54 +117,48 @@ PSSB0_              def       %00000001           ;
   ;   1 1 1 0 1 29/32 = 0.90625
   ;   1 1 1 1 0 30/32 = 0.9375
   ;   1 1 1 1 1 31/32 = 0.96875
-     
 
 SCIACTL             def       $0A,1               ;SCI A. Control
 
-AM1.                def       7                   ;Loop mode select bit                  
-ALOST.              def       6                   ;Enable SCI bit                        
-AM0.                def       5                   ;Transmit invertion bit                
+AM1.                def       7                   ;Loop mode select bit
+ALOST.              def       6                   ;Enable SCI bit
+AM0.                def       5                   ;Transmit invertion bit
 ACLK.               def       4                   ;Mode (character length) bit (0=8, 1=9)
-AFIN.               def       3                   ;Wake-up condition bit                 
-ARUN.               def       2                   ;Idle line type bit                    
-AROVFL.             def       1                   ;Parity enable bit                     
-ARD8.               def       0                   ;Parity bit (0=even, 1=odd)            
-                    
-AM1_                def       %10000000           ;Loop mode select bit                  
-ALOST_              def       %01000000           ;Enable SCI bit                        
-AM0_                def       %00100000           ;Transmit invertion bit                
-ACLK_               def       %00010000           ;Mode (character length) bit (0=8, 1=9)
-AFIN_               def       %00001000           ;Wake-up condition bit                 
-ARUN_               def       %00000100           ;Idle line type bit                    
-AROVFL_             def       %00000010           ;Parity enable bit                     
-ARD8_               def       %00000001           ;Parity bit (0=even, 1=odd)            
+AFIN.               def       3                   ;Wake-up condition bit
+ARUN.               def       2                   ;Idle line type bit
+AROVFL.             def       1                   ;Parity enable bit
+ARD8.               def       0                   ;Parity bit (0=even, 1=odd)
 
+AM1_                def       %10000000           ;Loop mode select bit
+ALOST_              def       %01000000           ;Enable SCI bit
+AM0_                def       %00100000           ;Transmit invertion bit
+ACLK_               def       %00010000           ;Mode (character length) bit (0=8, 1=9)
+AFIN_               def       %00001000           ;Wake-up condition bit
+ARUN_               def       %00000100           ;Idle line type bit
+AROVFL_             def       %00000010           ;Parity enable bit
+ARD8_               def       %00000001           ;Parity bit (0=even, 1=odd)
 
 SCIADAT             def       $0B,1               ;SCI Arbiter Data
-
 
 SPCR                def       $10,1               ;SPI Control R.
 
 SPRIE.              def       7                   ;SPI Receiver interrupt enable
-DMAS.               def       6                   ;DMA select                   
-SPMSTR.             def       5                   ;SPI master                   
-CPOL.               def       4                   ;Clock polarity               
-CPHA.               def       3                   ;Clock phase                  
-SPWOM.              def       2                   ;SPI wired-OR mode            
-SPE.                def       1                   ;SPI enable                   
+DMAS.               def       6                   ;DMA select
+SPMSTR.             def       5                   ;SPI master
+CPOL.               def       4                   ;Clock polarity
+CPHA.               def       3                   ;Clock phase
+SPWOM.              def       2                   ;SPI wired-OR mode
+SPE.                def       1                   ;SPI enable
 SPTIE.              def       0                   ;SPI transmit interrupt enable
-            
+
 SPRIE_              def       %10000000           ;SPI Receiver interrupt enable
-DMAS_               def       %01000000           ;DMA select                   
-SPMSTR_             def       %00100000           ;SPI master                   
-CPOL_               def       %00010000           ;Clock polarity               
-CPHA_               def       %00001000           ;Clock phase                  
-SPWOM_              def       %00000100           ;SPI wired-OR mode            
-SPE_                def       %00000010           ;SPI enable                   
+DMAS_               def       %01000000           ;DMA select
+SPMSTR_             def       %00100000           ;SPI master
+CPOL_               def       %00010000           ;Clock polarity
+CPHA_               def       %00001000           ;Clock phase
+SPWOM_              def       %00000100           ;SPI wired-OR mode
+SPE_                def       %00000010           ;SPI enable
 SPTIE_              def       %00000001           ;SPI transmit interrupt enable
-
-
-     
 
 ; **** Interrupt Request Module (IRQ) ******************************************
 
@@ -179,16 +166,12 @@ SPTIE_              def       %00000001           ;SPI transmit interrupt enable
 
 ; **** Serial Peripheral Interface (SPI) ***************************************
 
-
 ; **** Analog-to-Digital Converter Module (ATD) ********************************
-
 
 ; **** Inter-Integrated Circuit Module (IIC) ***********************************
 
-
 ; **** Timer/PWM Module 1 (TPM1) ***** TPM1 has 3 channels *********************
 ; **** Timer/PWM Module 2 (TPM2) ***** TPM2 has 5 channels *********************
-
 
 ;TPM1CNT             def       $31,2               ;TPM1 counter
 ;TPM1CNTH            def       $31,1               ;TPM1 counter (high half)
@@ -196,23 +179,17 @@ SPTIE_              def       %00000001           ;SPI transmit interrupt enable
 
 ; **** Internal Clock Generator Module (ICG) ***********************************
 
-
 ; **** System Integration Module (SIM) *****************************************
 SRSR                def       $FE01,1               ;Reset Status Register (SRSR)
 COPCTL              def       $FFFF,1               ;Computer Operates Properly Control
 
-
 ; **** Power Management and Control Module (PMC) *******************************
-
 
 ; **** Debug Module (DBG) ******************************************************
 
-
 ; **** Flash Module (FLASH) ****************************************************
 
-
 ; **** Flash non-volatile register images **************************************
-
 
 ; **** END OF ORIGINAL DEFINITIONS *********************************************
 
@@ -230,8 +207,7 @@ VECTORS             def       $FFCC               ;start of fixed vectors
           #ifdef RVECTORS
 VECTORS             set       RVECTORS
           #endif
-
-;--- Vectors
+          ;-------------------------------------- ;Vectors
                     #temp     VECTORS
 Vtpm2ch5            next      :temp,2             ;TPM2 channel 5 vector
 Vtpm2ch4            next      :temp,2             ;TPM2 channel 4 vector
@@ -260,7 +236,6 @@ Virq                next      :temp,2             ;IRQ vector
 Vswi                next      :temp,2             ;SWI vector
 Vreset              next      :temp,2             ;reset vector
 
-
 ROM                 def       $8000
 ROM_END             def       $FDFF               ;end of all flash (before NV register and fixed vectors)
 
@@ -273,34 +248,18 @@ XRAM_END            def       $097F
 FLASH_START         def       ROM
 FLASH_END           def       ROM_END
 
-
 SERIAL_NUMBER       def       $FFA0               ;start of optional S/N (FFA0-FFAD)
 
-#ifndef MHZ
-  #ifndef KHZ
+#ifndef MHZ||KHZ
 HZ                  def       8000000
-  #endif
 #endif
-;-------------------------------------------------------------------------------
-;                    #Uses     common.inc
-;-------------------------------------------------------------------------------
-
-                    #DATA
-
-                    #VECTORS
-                    org       VECTORS
-
-                    #RAM
-                    org       RAM
-
-                    #XRAM
-                    org       XRAM
-
-                    #ROM
-                    org       ROM
+;*******************************************************************************
+                    #VECTORS  VECTORS
+                    #RAM      RAM
+                    #XRAM     XRAM
+                    #ROM      ROM
 
                     #MEMORY   ROM       ROM_END
                     #MEMORY   RAM       RAM_END
                     #MEMORY   XRAM      XRAM_END
                     #MEMORY   VECTORS   VECTORS|$00FF
-
